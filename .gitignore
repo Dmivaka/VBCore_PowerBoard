@@ -1,4 +1,6 @@
-.DS_Store
-*.dep
-/EWARM
-/Drivers
+!EWARM/
+EWARM/*
+!EWARM/*.ewp
+!EWARM/*.eww
+
+Drivers/
