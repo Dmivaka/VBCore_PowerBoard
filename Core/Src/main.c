@@ -114,14 +114,24 @@ static void MX_TIM7_Init(void);
 static void MX_FDCAN1_Init(void);
 static void MX_TIM16_Init(void);
 /* USER CODE BEGIN PFP */
+
+#if defined ( __ICCARM__ ) /*!< IAR Compiler */
 #pragma optimize s=none
 uint64_t micros()
+#elif defined ( __GNUC__ ) /* GNU Compiler */
+uint64_t __attribute__((optimize("O0"))) micros()
+#endif
 { 
   return (uint64_t)(__HAL_TIM_GET_COUNTER(&htim7) + 50000u * TIM7_ITs);
 }
 
+
+#if defined ( __ICCARM__ ) /*!< IAR Compiler */
 #pragma optimize s=none
 void micros_delay( uint64_t delay )
+#elif defined ( __GNUC__ ) /* GNU Compiler */
+void __attribute__((optimize("O0"))) micros_delay( uint64_t delay )
+#endif
 {
   uint64_t timestamp = micros();
   while( micros() < timestamp + delay );
