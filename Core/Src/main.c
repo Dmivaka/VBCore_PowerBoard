@@ -1222,6 +1222,14 @@ void Error_Handler(void)
   /* USER CODE BEGIN Error_Handler_Debug */
   LL_GPIO_SetOutputPin(OE_CTL_GPIO_Port, OE_CTL_Pin); // reset channels output control
   LL_GPIO_ResetOutputPin(BUS_CTl_GPIO_Port, BUS_CTl_Pin); // disable power bus     
+  
+  LL_GPIO_SetOutputPin(S1_red_GPIO_Port, S1_red_Pin);
+  LL_GPIO_SetOutputPin(S2_red_GPIO_Port, S2_red_Pin);
+  LL_GPIO_SetOutputPin(S3_red_GPIO_Port, S3_red_Pin);
+
+  LL_GPIO_SetOutputPin(S1_grn_GPIO_Port, S1_grn_Pin);
+  LL_GPIO_SetOutputPin(S2_grn_GPIO_Port, S2_grn_Pin);
+  LL_GPIO_SetOutputPin(S3_grn_GPIO_Port, S3_grn_Pin);
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
   while (1)
