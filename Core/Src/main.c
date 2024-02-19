@@ -49,6 +49,7 @@ typedef struct
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 //#define auto_prime_selection
+#define curr_sns_inver
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -80,15 +81,18 @@ input_src_stat VIN3 = { .PG_pin = SUPP_3_PG_Pin, .PG_port = SUPP_3_PG_GPIO_Port}
 input_src_stat CHRG;
 
 input_src_stat *prime_VIN;
-uint8_t prime = 0; // selected power source variable. RW
 
 input_src_stat *prime_VOUT = NULL;
 
 /********** User accessible variables **********/
+uint8_t prime = 0; // selected power source variable. RW
+
 const float uvlo_level = 30.0f; // battery discharged voltage level, Volts
 const float uvlo_hyst = 1.5f; // battery discharged hysteresis, Volts
 
 const float src_charged_level = 40.0f; // battery charged voltage level, Volts
+
+const float nom_chrg_curr = 15.0f;
 
 const uint32_t bus_start_timeout = 30000u; // timeout for bus output reaching PowerGood status, microseconds
 const uint8_t emergency_start_threshold = 3u; // number of attempts to start the bus before an emergency shutdown
@@ -118,7 +122,7 @@ static void MX_TIM16_Init(void);
 #if defined ( __ICCARM__ ) /*!< IAR Compiler */
 #pragma optimize s=none
 uint64_t micros()
-#elif defined ( __GNUC__ ) /* GNU Compiler */
+#elif defined ( __GNUC__ ) /*!< GNU Compiler */
 uint64_t __attribute__((optimize("O0"))) micros()
 #endif
 { 
@@ -129,7 +133,7 @@ uint64_t __attribute__((optimize("O0"))) micros()
 #if defined ( __ICCARM__ ) /*!< IAR Compiler */
 #pragma optimize s=none
 void micros_delay( uint64_t delay )
-#elif defined ( __GNUC__ ) /* GNU Compiler */
+#elif defined ( __GNUC__ ) /*!< GNU Compiler */
 void __attribute__((optimize("O0"))) micros_delay( uint64_t delay )
 #endif
 {
@@ -803,12 +807,25 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+float get_actual_current(void)
+{
+  float ACS_output_v = ( (float)ADC1_buf[1] * 3.3f / 4096.0f ) - 1.65f;
+  
+  #ifdef curr_sns_inver
+  ACS_output_v *= -1.0f;
+  #endif
+  
+  // ACS725LLCTR-50AB Sensitivity = 26.4 mV/A
+  return ACS_output_v / 0.0264f;
+}
+
 uint8_t check_battery_input( input_src_stat * VIN )
 {
   if( VIN->HPF < -5.0f )
   {
     micros_delay( 1000 );
-    if( ADC1_buf[1] < 2060 ) // exclude transients. the source is disconnected only if current ~0A
+    
+    if( get_actual_current() < 0.4f ) // exclude transients. the source is disconnected only if current ~0A
     {
       VIN->attached = 0;
       VIN->LPF = 0.0f;
@@ -857,7 +874,6 @@ void check_buttons(void)
     }
   }  
 }
-
 
 uint8_t buzzer_mutex = 0;
 uint64_t buzzer_pulse_stamp = 0;
@@ -924,13 +940,17 @@ void power_control(void)
       }
     }
     
-    if( ADC1_buf[1] < 1890 )
+    static float my_current = 0.0f;
+    
+    my_current = my_current - (0.1f * (my_current - get_actual_current())); 
+    
+    if( my_current < ( -1.3f * nom_chrg_curr ) )
     {
       // charging overcurrent event
       Error_Handler();
     }
     
-    if( ADC1_buf[1] > 2030 )
+    if( get_actual_current() > ( -0.075f * nom_chrg_curr ))
     {
       // battery takes no current = battery is charged
       prime_VOUT = NULL;
