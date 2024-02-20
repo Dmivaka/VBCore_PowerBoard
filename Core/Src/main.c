@@ -52,7 +52,7 @@ typedef struct
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 //#define auto_prime_selection
-#define curr_sns_inver
+//#define curr_sns_inver
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
