@@ -23,6 +23,9 @@
 /* USER CODE BEGIN Includes */
 #include "my_helpers.h"
 #include "communication.h"
+
+#include <stdio.h>
+#include <stdarg.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -67,6 +70,8 @@ TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim6;
 TIM_HandleTypeDef htim7;
 TIM_HandleTypeDef htim16;
+
+UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 uint64_t TIM7_ITs = 0; // counter of microseconds timesource ITs
@@ -117,6 +122,7 @@ static void MX_TIM6_Init(void);
 static void MX_TIM7_Init(void);
 static void MX_FDCAN1_Init(void);
 static void MX_TIM16_Init(void);
+static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 #if defined ( __ICCARM__ ) /*!< IAR Compiler */
@@ -140,6 +146,8 @@ void __attribute__((optimize("O0"))) micros_delay( uint64_t delay )
   uint64_t timestamp = micros();
   while( micros() < timestamp + delay );
 }
+
+void UART2_printf( const char * format, ... );
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -182,6 +190,7 @@ int main(void)
   MX_TIM7_Init();
   MX_FDCAN1_Init();
   MX_TIM16_Init();
+  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
   HAL_Delay(300); // prevents MOSFETs torture if board is forced to restart frequently
   
@@ -223,6 +232,8 @@ int main(void)
   HAL_TIM_Base_Start_IT(&htim16); // processes power control logic in TIM16 interrupt
   HAL_Delay(10);
   
+  UART2_printf( "UVLO=%4.1f HYST=%4.1f FULL_CHRG=%4.1f CHRG_CURR=%4.1f\r\n", uvlo_level, uvlo_hyst, src_charged_level, nom_chrg_curr);
+
   uavcan_setup();
 
   /* USER CODE END 2 */
@@ -599,6 +610,54 @@ static void MX_TIM16_Init(void)
 }
 
 /**
+  * @brief USART2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART2_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART2_Init 0 */
+
+  /* USER CODE END USART2_Init 0 */
+
+  /* USER CODE BEGIN USART2_Init 1 */
+
+  /* USER CODE END USART2_Init 1 */
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 115200;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart2.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart2.Init.ClockPrescaler = UART_PRESCALER_DIV1;
+  huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_SetTxFifoThreshold(&huart2, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_SetRxFifoThreshold(&huart2, UART_RXFIFO_THRESHOLD_1_8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_DisableFifoMode(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART2_Init 2 */
+
+  /* USER CODE END USART2_Init 2 */
+
+}
+
+/**
   * Enable DMA controller clock
   */
 static void MX_DMA_Init(void)
@@ -889,6 +948,7 @@ void power_control(void)
     LL_GPIO_SetOutputPin(OE_CTL_GPIO_Port, OE_CTL_Pin); // reset channels output control
     LL_GPIO_ResetOutputPin(BUS_CTl_GPIO_Port, BUS_CTl_Pin); // disable power bus    
     
+    UART2_printf( "The bus did not reach PG status after %d attempts!\r\n", emergency_start_threshold);
     Error_Handler();
   }
   
@@ -947,6 +1007,10 @@ void power_control(void)
     if( my_current < ( -1.3f * nom_chrg_curr ) )
     {
       // charging overcurrent event
+      LL_GPIO_SetOutputPin(OE_CTL_GPIO_Port, OE_CTL_Pin); // reset channels output control
+      LL_GPIO_ResetOutputPin(BUS_CTl_GPIO_Port, BUS_CTl_Pin); // disable power bus    
+    
+      UART2_printf( "Charge  overcurrent event!\r\n");
       Error_Handler();
     }
     
@@ -1211,6 +1275,17 @@ uint8_t FDCAN_ProcessFifo(void)
     FDCAN_RxProcessing( RxHeader.Identifier, LengthDecoder(RxHeader.DataLength), RxData);
   }
 }
+
+void UART2_printf( const char * format, ... )
+{
+  char buffer[256] = {0};
+  va_list args;
+  va_start (args, format);
+  int len = vsprintf (buffer,format, args);
+  va_end (args);
+  
+  HAL_UART_Transmit(&huart2, (const uint8_t*)buffer, len, 100);
+}
 /* USER CODE END 4 */
 
 /**
@@ -1230,6 +1305,8 @@ void Error_Handler(void)
   LL_GPIO_SetOutputPin(S1_grn_GPIO_Port, S1_grn_Pin);
   LL_GPIO_SetOutputPin(S2_grn_GPIO_Port, S2_grn_Pin);
   LL_GPIO_SetOutputPin(S3_grn_GPIO_Port, S3_grn_Pin);
+  
+  UART2_printf( "I've fallen into Error Handler!\r\n");
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
   while (1)
