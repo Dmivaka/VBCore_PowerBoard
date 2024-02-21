@@ -53,6 +53,14 @@ typedef struct
 /* USER CODE BEGIN PD */
 //#define auto_prime_selection
 //#define curr_sns_inver
+
+/* Enable these defines for boards with wire jumper on PA5 pin
+#undef BUS_CTl_Pin
+#undef BUS_CTl_GPIO_Port
+
+#define BUS_CTl_Pin LL_GPIO_PIN_5
+#define BUS_CTl_GPIO_Port GPIOA
+*/
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -227,6 +235,8 @@ int main(void)
   if( HAL_FDCAN_Start(&hfdcan1) != HAL_OK ){ Error_Handler(); }
 
   HAL_TIM_Base_Start_IT(&htim6); // processes ADC values in TIM6 interrupt
+  
+  LL_GPIO_SetOutputPin(PC_CTL_GPIO_Port, PC_CTL_Pin); // enable PC bus    
   
   HAL_Delay(100);
   HAL_TIM_Base_Start_IT(&htim16); // processes power control logic in TIM16 interrupt
@@ -487,7 +497,7 @@ static void MX_TIM3_Init(void)
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 220;
+  sConfigOC.Pulse = 10;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
@@ -723,6 +733,9 @@ static void MX_GPIO_Init(void)
   LL_GPIO_ResetOutputPin(S2_grn_GPIO_Port, S2_grn_Pin);
 
   /**/
+  LL_GPIO_ResetOutputPin(PC_CTL_GPIO_Port, PC_CTL_Pin);
+
+  /**/
   LL_GPIO_ResetOutputPin(S1_grn_GPIO_Port, S1_grn_Pin);
 
   /**/
@@ -854,6 +867,14 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
   GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
   LL_GPIO_Init(S2_grn_GPIO_Port, &GPIO_InitStruct);
+
+  /**/
+  GPIO_InitStruct.Pin = PC_CTL_Pin;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
+  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
+  LL_GPIO_Init(PC_CTL_GPIO_Port, &GPIO_InitStruct);
 
   /**/
   GPIO_InitStruct.Pin = S1_grn_Pin;

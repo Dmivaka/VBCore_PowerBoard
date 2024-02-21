@@ -106,6 +106,8 @@ uint8_t FDCAN_ProcessFifo(void);
 #define S3_grn_GPIO_Port GPIOB
 #define S2_grn_Pin LL_GPIO_PIN_5
 #define S2_grn_GPIO_Port GPIOB
+#define PC_CTL_Pin LL_GPIO_PIN_6
+#define PC_CTL_GPIO_Port GPIOB
 #define S1_grn_Pin LL_GPIO_PIN_7
 #define S1_grn_GPIO_Port GPIOB
 
